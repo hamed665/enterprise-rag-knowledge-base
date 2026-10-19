@@ -85,3 +85,11 @@ Ask “How long does delivery take?”, inspect the cited Delivery policy, then 
 Derived from [supabase-community/nextjs-openai-doc-search](https://github.com/supabase-community/nextjs-openai-doc-search), baseline `50d6bb71706b50a83c2a52dc4a7d3e426ac34adf`. Its complete source, original README, Supabase schema and configuration remain under `legacy/`, and the original Apache-2.0 LICENSE and Git history are retained.
 
 Hamed Minaei's work is the modern root runtime, ingestion/retrieval/evaluation modules, new UI/API, synthetic corpus, tests and CI. This change replaces the runnable legacy application with a credential-free retrieval workbench; it does not claim that the old cloud API was ported or validated. See [verification](docs/VERIFICATION.md) and [NOTICE](NOTICE).
+
+## Verified browser screenshots
+
+Captured by Playwright in GitHub Actions against the synthetic corpus.
+
+![Desktop retrieval with source citations](docs/screenshots/knowledge-1440.png)
+
+[Mobile screenshot](docs/screenshots/knowledge-320.png)
