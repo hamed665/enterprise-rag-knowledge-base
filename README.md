@@ -1,116 +1,87 @@
-# Next.js OpenAI Doc Search Starter
+# Knowledge Workbench
 
-This starter takes all the `.mdx` files in the `pages` directory and processes them to use as custom context within [OpenAI Text Completion](https://platform.openai.com/docs/guides/completion) prompts.
+A modernized, evidence-first document retrieval portfolio project by Hamed Minaei, derived from Supabase's Next.js doc-search template.
 
-## Deploy
+**Status: extractive portfolio preview, not a complete enterprise RAG service.** The working runtime uses local document ingestion and deterministic lexical retrieval. It does not create embeddings, call an LLM, connect to Supabase, or provide enterprise authorization. The original cloud integration is preserved under `legacy/` for attribution and migration reference, and is excluded from the new runtime.
 
-Deploy this starter to Vercel. The Supabase integration will automatically set the required environment variables and configure your [Database Schema](./supabase/migrations/20230406025118_init.sql). All you have to do is set your `OPENAI_KEY` and you're ready to go!
+## Architecture
 
-[![Deploy with Vercel](https://vercel.com/new/clone?demo-title=Next.js%20OpenAI%20Doc%20Search%20Starter&demo-description=Template%20for%20building%20your%20own%20custom%20ChatGPT%20style%20doc%20search%20powered%20by%20Next.js%2C%20OpenAI%2C%20and%20Supabase.&demo-url=https%3A%2F%2Fsupabase.com%2Fdocs&demo-image=%2F%2Fimages.ctfassets.net%2Fe5382hct74si%2F1OntM6THNEUvlUsYy6Bjmf%2F475e39dbc84779538c8ed47c63a37e0e%2Fnextjs_openai_doc_search_og.png&project-name=Next.js%20OpenAI%20Doc%20Search%20Starter&repository-name=nextjs-openai-doc-search-starter&repository-url=https%3A%2F%2Fgithub.com%2Fsupabase-community%2Fnextjs-openai-doc-search%2F&from=github&integration-ids=oac_VqOgBHqhEoFTPzGkPd7L0iH6&env=OPENAI_KEY&envDescription=Get%20your%20OpenAI%20API%20key%3A&envLink=https%3A%2F%2Fplatform.openai.com%2Faccount%2Fapi-keys&teamCreateStatus=hidden&external-id=https%3A%2F%2Fgithub.com%2Fsupabase-community%2Fnextjs-openai-doc-search%2Ftree%2Fmain)
+| Component | Responsibility |
+| --- | --- |
+| `lib/ingestion.ts` | Bounded local Markdown/text ingestion; no URL fetches or symlink following |
+| `lib/retrieval.ts` | Stable chunk identities, Unicode tokenization, scored retrieval, citations and evaluation |
+| `scripts/` | Ingestion, evaluation and built-server HTTP verification |
+| `app/` | Next.js workbench and validated, size-limited search API over synthetic examples |
+| `legacy/` | Preserved upstream application, old dependencies and Supabase schema; not installed or executed by current commands |
 
-## Technical Details
+The browser/API uses the checked-in synthetic `examples/index.json`. CLI-created `.data/index.json` is separate; importing arbitrary private documents into the public demo is deliberately unsupported. RAG generation, embedding quality and model faithfulness need a separately authorized, disposable provider integration before they can be evaluated.
 
-Building your own custom ChatGPT involves four steps:
+## Features
 
-1. [👷 Build time] Pre-process the knowledge base (your `.mdx` files in your `pages` folder).
-2. [👷 Build time] Store embeddings in Postgres with [pgvector](https://supabase.com/docs/guides/database/extensions/pgvector).
-3. [🏃 Runtime] Perform vector similarity search to find the content that's relevant to the question.
-4. [🏃 Runtime] Inject content into OpenAI GPT-3 text completion prompt and stream response to the client.
+- Markdown/text folder ingestion, deterministic corpus hashes, stable source IDs and Unicode-aware overlapping chunks.
+- Document, chunk and request limits; hidden-file exclusion and symlink rejection.
+- Retrieved passages with document title, source path, chunk offset and ranking score.
+- Explicit abstention for questions with no matching tokens.
+- Reproducible evaluation of expected-source ranking and correct abstention.
+- Updated root runtime: Next.js 16.4.2, React 19.3.1 and TypeScript 5.9.3; pinned dependencies and lockfile.
+- Responsive UI, automated policy tests, HTTP smoke tests and browser screenshot scenarios.
 
-## 👷 Build time
+This is lexical retrieval, not vector/semantic search. Its toy evaluation scores are not evidence of production retrieval effectiveness.
 
-Step 1. and 2. happen at build time, e.g. when Vercel builds your Next.js app. During this time the [`generate-embeddings`](./lib/generate-embeddings.ts) script is being executed which performs the following tasks:
+## Installation
 
-```mermaid
-sequenceDiagram
-    participant Vercel
-    participant DB (pgvector)
-    participant OpenAI (API)
-    loop 1. Pre-process the knowledge base
-        Vercel->>Vercel: Chunk .mdx pages into sections
-        loop 2. Create & store embeddings
-            Vercel->>OpenAI (API): create embedding for page section
-            OpenAI (API)->>Vercel: embedding vector(1536)
-            Vercel->>DB (pgvector): store embedding for page section
-        end
-    end
-```
-
-In addition to storing the embeddings, this script generates a checksum for each of your `.mdx` files and stores this in another database table to make sure the embeddings are only regenerated when the file has changed.
-
-## 🏃 Runtime
-
-Step 3. and 4. happen at runtime, anytime the user submits a question. When this happens, the following sequence of tasks is performed:
-
-```mermaid
-sequenceDiagram
-    participant Client
-    participant Edge Function
-    participant DB (pgvector)
-    participant OpenAI (API)
-    Client->>Edge Function: { query: lorem ispum }
-    critical 3. Perform vector similarity search
-        Edge Function->>OpenAI (API): create embedding for query
-        OpenAI (API)->>Edge Function: embedding vector(1536)
-        Edge Function->>DB (pgvector): vector similarity search
-        DB (pgvector)->>Edge Function: relevant docs content
-    end
-    critical 4. Inject content into prompt
-        Edge Function->>OpenAI (API): completion request prompt: query + relevant docs content
-        OpenAI (API)-->>Client: text/event-stream: completions response
-    end
-```
-
-The relevant files for this are the [`SearchDialog` (Client)](./components/SearchDialog.tsx) component and the [`vector-search` (Edge Function)](./pages/api/vector-search.ts).
-
-The initialization of the database, including the setup of the `pgvector` extension is stored in the [`supabase/migrations` folder](./supabase/migrations/) which is automatically applied to your local Postgres instance when running `supabase start`.
-
-## Local Development
-
-### Configuration
-
-- `cp .env.example .env`
-- Set your `OPENAI_KEY` in the newly created `.env` file.
-- Set `NEXT_PUBLIC_SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY` run:
-  > Note: You have to run supabase to retrieve the keys.
-
-### Start Supabase
-
-Make sure you have Docker installed and running locally. Then run
+Requires Node.js 24 and pnpm 10.32.1.
 
 ```bash
-supabase start
-```
-
-To retrieve `NEXT_PUBLIC_SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY` run:
-
-```bash
-supabase status
-```
-
-### Start the Next.js App
-
-In a new terminal window, run
-
-```bash
+pnpm install --frozen-lockfile --ignore-scripts
+pnpm test
 pnpm dev
 ```
 
-### Using your custom .mdx docs
+Open `http://127.0.0.1:3000`. No API key or database is needed. All included documents are fictional.
 
-1. By default your documentation will need to be in `.mdx` format. This can be done by renaming existing (or compatible) markdown `.md` file.
-2. Run `pnpm run embeddings` to regenerate embeddings.
-   > Note: Make sure supabase is running. To check, run `supabase status`. If is not running run `supabase start`.
-3. Run `pnpm dev` again to refresh NextJS localhost:3000 rendered page.
+## Configuration
 
-## Learn More
+The current runtime reads no environment variables; `.env.example` states this explicitly. Do not add production credentials.
 
-- Read the blogpost on how we built [ChatGPT for the Supabase Docs](https://supabase.com/blog/chatgpt-supabase-docs).
-- [[Docs] pgvector: Embeddings and vector similarity](https://supabase.com/docs/guides/database/extensions/pgvector)
-- Watch [Greg's](https://twitter.com/ggrdson) "How I built this" [video](https://youtu.be/Yhtjd7yGGGA) on the [Rabbit Hole Syndrome YouTube Channel](https://www.youtube.com/@RabbitHoleSyndrome):
+```bash
+pnpm ingest examples/documents .data/index.json
+pnpm evaluate
+```
 
-[![Video: How I Built Supabase’s OpenAI Doc Search](https://img.youtube.com/vi/Yhtjd7yGGGA/0.jpg)](https://www.youtube.com/watch?v=Yhtjd7yGGGA)
+Ingestion accepts at most 100 `.md`/`.txt` documents of 200 KB each and 5000 chunks. Default chunks contain 600 Unicode codepoints with 100-codepoint overlap. Regenerate the synthetic browser corpus explicitly with `pnpm ingest examples/documents examples/index.json`. CLI output paths are local files and may be replaced by subsequent runs.
 
-## Licence
+## Security
 
-Apache 2.0
+The public search endpoint reads only the bundled fictional corpus and rejects requests over 4096 bytes, malformed JSON and invalid questions. No remote ingestion, model tools, SQL, file download or production connection is exposed. Source text is rendered as React text. Local ingestion never follows symlinks.
+
+There is no identity, access-control layer, rate limiter, persistent multi-user storage or tenant boundary. Do not deploy with confidential documents. The legacy service-role API and old dependencies are archived, not security-approved or modernized in place. Never run `legacy` in a production environment.
+
+The root dependency audit initially reported zero known advisories. Rerun `pnpm audit` before release. Retain dependency license notices and review their inventory; Apache permission on the repository does not relicense dependencies.
+
+## Testing
+
+```bash
+pnpm test
+pnpm typecheck
+pnpm evaluate
+pnpm build
+node scripts/smoke.mjs
+pnpm exec playwright install --with-deps chromium
+pnpm exec playwright test
+pnpm audit --audit-level high
+```
+
+Seven tests exercise deterministic ingestion, chunk boundaries, Unicode, unsafe sources, symlinks, stale identities, citations and evaluation. HTTP checks cover citations, abstention, invalid JSON, request limits and unsupported methods. Browser tests exercise desktop/mobile retrieval and emit real screenshots as CI artifacts. Local browser execution remains unavailable in this environment; do not treat authored tests as passing until CI confirms them.
+
+`examples/evaluation-results.json` records a three-case synthetic evaluation: expected-source retrieval and abstention accuracy 1.0, MRR 1.0. These only verify the tiny fixture. They do not measure generated-answer faithfulness or real-world performance.
+
+## Demo
+
+Ask “How long does delivery take?”, inspect the cited Delivery policy, then ask “quantum telescope orbit” to observe abstention. Run ingestion and evaluation from the commands above. No live model, hosted deployment or embedding demo is claimed.
+
+## Attribution
+
+Derived from [supabase-community/nextjs-openai-doc-search](https://github.com/supabase-community/nextjs-openai-doc-search), baseline `50d6bb71706b50a83c2a52dc4a7d3e426ac34adf`. Its complete source, original README, Supabase schema and configuration remain under `legacy/`, and the original Apache-2.0 LICENSE and Git history are retained.
+
+Hamed Minaei's work is the modern root runtime, ingestion/retrieval/evaluation modules, new UI/API, synthetic corpus, tests and CI. This change replaces the runnable legacy application with a credential-free retrieval workbench; it does not claim that the old cloud API was ported or validated. See [verification](docs/VERIFICATION.md) and [NOTICE](NOTICE).
