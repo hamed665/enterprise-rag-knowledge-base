@@ -1,0 +1,28 @@
+{
+  "cases": 3,
+  "retrievalAndAbstentionAccuracy": 1,
+  "meanReciprocalRank": 1,
+  "results": [
+    {
+      "question": "How long does delivery take?",
+      "expectedSource": "delivery.md",
+      "passed": true,
+      "rank": 1,
+      "abstained": false
+    },
+    {
+      "question": "Who may export transcripts?",
+      "expectedSource": "retention.md",
+      "passed": true,
+      "rank": 1,
+      "abstained": false
+    },
+    {
+      "question": "quantum telescope orbit",
+      "expectedSource": null,
+      "passed": true,
+      "rank": 0,
+      "abstained": true
+    }
+  ]
+}
