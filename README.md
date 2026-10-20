@@ -1,5 +1,11 @@
 # Knowledge Workbench
 
+**[Hamed Minaei](https://github.com/hamed665) · Project maintainer & integration engineer**
+
+**My engineering scope:** Bounded document ingestion, stable chunk identities, source citations, abstention and retrieval evaluation.
+
+[My contributions & implementation evidence](MY_CONTRIBUTIONS.md) · [Implementation PR](https://github.com/hamed665/enterprise-rag-knowledge-base/pull/1) · [Architecture](#architecture) · [Testing](#testing)
+
 A modernized, evidence-first document retrieval portfolio project by Hamed Minaei, derived from Supabase's Next.js doc-search template.
 
 **Status: extractive portfolio preview, not a complete enterprise RAG service.** The working runtime uses local document ingestion and deterministic lexical retrieval. It does not create embeddings, call an LLM, connect to Supabase, or provide enterprise authorization. The original cloud integration is preserved under `legacy/` for attribution and migration reference, and is excluded from the new runtime.
